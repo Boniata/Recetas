@@ -3,6 +3,7 @@ import type { Store } from '../store/useStore';
 import { scaleQty } from '../store/useStore';
 import type { Recipe, Ingredient } from '../types';
 import Modal from '../components/ui/Modal';
+import { parseRecipeText } from '../store/parseRecipeText';
 
 type View = 'list' | 'form' | 'detail';
 
@@ -366,6 +367,120 @@ function RecipeDetail({
   );
 }
 
+// ── Import Modal ───────────────────────────────────────────────────────────────
+
+function ImportModal({
+  store,
+  onClose,
+  onImported,
+}: {
+  store: Store;
+  onClose: () => void;
+  onImported: (r: Recipe) => void;
+}) {
+  const [text, setText] = useState('');
+  const [preview, setPreview] = useState<ReturnType<typeof parseRecipeText> | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  function handleParse() {
+    if (!text.trim()) return;
+    setPreview(parseRecipeText(text));
+  }
+
+  function handleSave() {
+    if (!preview) return;
+    const recipe = store.addRecipe({
+      name: preview.name,
+      base_servings: preview.base_servings,
+      is_freezable: preview.is_freezable,
+    });
+    store.setRecipeIngredients(recipe.id, preview.ingredients);
+    store.setRecipeSteps(recipe.id, preview.steps.map(s => s));
+    setSaved(true);
+    setTimeout(() => onImported(recipe), 900);
+  }
+
+  return (
+    <Modal title="Importar receta desde texto" onClose={onClose} width="600px">
+      {saved ? (
+        <div className="success-msg">✅ ¡Receta importada!</div>
+      ) : !preview ? (
+        <>
+          <p className="import-hint">
+            Pega el texto de la receta — de un blog, una web, un chat, lo que sea.
+            El sistema detectará automáticamente el nombre, ingredientes y pasos.
+          </p>
+          <textarea
+            className="input import-textarea"
+            placeholder={`Lentejas con chorizo\n\nIngredientes (4 personas):\n- 300g de lentejas\n- 2 chorizos\n- 1 cebolla\n- 2 dientes de ajo\n- sal al gusto\n\nPreparación:\n1. Poner las lentejas en remojo...\n2. Sofreír la cebolla...`}
+            value={text}
+            onChange={e => setText(e.target.value)}
+            rows={12}
+          />
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleParse} disabled={!text.trim()}>
+              Analizar texto →
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="import-preview">
+            <div className="preview-field">
+              <span className="preview-label">Nombre</span>
+              <span className="preview-value">{preview.name}</span>
+            </div>
+            <div className="preview-field">
+              <span className="preview-label">Raciones</span>
+              <span className="preview-value">{preview.base_servings}</span>
+            </div>
+            <div className="preview-field">
+              <span className="preview-label">Congelable</span>
+              <span className="preview-value">{preview.is_freezable ? '❄️ Sí' : 'No'}</span>
+            </div>
+
+            {preview.ingredients.length > 0 && (
+              <div className="preview-section">
+                <span className="preview-label">Ingredientes detectados ({preview.ingredients.length})</span>
+                <ul className="preview-list">
+                  {preview.ingredients.map((ing, i) => (
+                    <li key={i}>
+                      <span className="ing-qty">
+                        {ing.unit === 'al gusto' ? 'al gusto' : `${ing.quantity} ${ing.unit}`}
+                      </span>
+                      {ing.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {preview.steps.length > 0 && (
+              <div className="preview-section">
+                <span className="preview-label">Pasos detectados ({preview.steps.length})</span>
+                <ol className="preview-steps">
+                  {preview.steps.map((s, i) => <li key={i}>{s}</li>)}
+                </ol>
+              </div>
+            )}
+
+            {preview.ingredients.length === 0 && preview.steps.length === 0 && (
+              <div className="alert alert-warning">
+                No se detectaron ingredientes ni pasos. Prueba a editar la receta manualmente después de importar.
+              </div>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-ghost" onClick={() => setPreview(null)}>← Volver a editar</button>
+            <button className="btn btn-primary" onClick={handleSave}>Guardar receta</button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 // ── Recipes Page ───────────────────────────────────────────────────────────────
 
 export default function RecipesPage({ store }: Props) {
@@ -373,6 +488,7 @@ export default function RecipesPage({ store }: Props) {
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [editing, setEditing] = useState<Recipe | null>(null);
   const [search, setSearch] = useState('');
+  const [showImport, setShowImport] = useState(false);
 
   if (view === 'form') {
     return (
@@ -407,9 +523,14 @@ export default function RecipesPage({ store }: Props) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Recetas</h1>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setView('form'); }}>
-          + Nueva receta
-        </button>
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
+            📋 Importar texto
+          </button>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setView('form'); }}>
+            + Nueva receta
+          </button>
+        </div>
       </div>
 
       <input
@@ -446,6 +567,14 @@ export default function RecipesPage({ store }: Props) {
             );
           })}
         </div>
+      )}
+
+      {showImport && (
+        <ImportModal
+          store={store}
+          onClose={() => setShowImport(false)}
+          onImported={recipe => { setSelected(recipe); setView('detail'); }}
+        />
       )}
     </div>
   );

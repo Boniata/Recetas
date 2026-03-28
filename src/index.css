@@ -467,6 +467,22 @@ input[type="range"].slider::-moz-range-thumb {
 .checkbox-label input { accent-color: var(--primary); width: 15px; height: 15px; }
 .empty-state-sm { padding: 20px; text-align: center; color: var(--text-muted); font-size: 14px; }
 
+/* ── Header actions ───────────────────────────────────────────────────────── */
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Import modal ─────────────────────────────────────────────────────────── */
+.import-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
+.import-textarea { font-size: 13px; line-height: 1.6; font-family: var(--sans); }
+.import-preview { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.preview-field { display: flex; gap: 12px; align-items: baseline; }
+.preview-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); min-width: 90px; }
+.preview-value { font-size: 15px; font-weight: 600; }
+.preview-section { display: flex; flex-direction: column; gap: 8px; }
+.preview-list { list-style: none; display: flex; flex-direction: column; gap: 5px; padding-left: 0; }
+.preview-list li { display: flex; gap: 10px; padding: 6px 10px; background: var(--surface2); border-radius: 6px; font-size: 13px; }
+.preview-steps { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.preview-steps li { font-size: 13px; line-height: 1.5; }
+
 /* ── Empty state ──────────────────────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .empty-state p { margin-bottom: 16px; font-size: 15px; }
