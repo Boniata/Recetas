@@ -15,6 +15,27 @@ export default function App() {
     migrateFromLocalStorage().catch(console.error);
   }, []);
 
+  // Seed initial history entry
+  useEffect(() => {
+    window.history.replaceState({ page: 'recipes' }, '');
+  }, []);
+
+  // Handle browser/mobile back button at the page level
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      if (e.state?.page) setPage(e.state.page as Page);
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []);
+
+  function navigate(p: Page) {
+    if (p !== page) {
+      window.history.pushState({ page: p }, '');
+      setPage(p);
+    }
+  }
+
   if (store.loading) {
     return (
       <div className="app-loading">
@@ -33,7 +54,7 @@ export default function App() {
   }
 
   return (
-    <Layout page={page} onNavigate={setPage}>
+    <Layout page={page} onNavigate={navigate}>
       {renderPage()}
     </Layout>
   );

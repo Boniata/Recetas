@@ -384,6 +384,10 @@ textarea.input { resize: vertical; }
 .ingredient-display-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .ingredient-display-list li { display: flex; gap: 12px; padding: 8px 12px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
 .ing-qty { font-weight: 600; color: var(--primary); min-width: 80px; }
+.ing-qty-input { font-weight: 600; color: var(--primary); width: 72px; border: 1px solid var(--primary-border); border-radius: 4px; padding: 2px 6px; background: var(--bg); font-size: 14px; text-align: right; }
+.ing-qty-input:focus { outline: none; border-color: var(--primary); }
+.ing-qty-static { font-weight: 600; color: var(--text-muted); min-width: 72px; }
+.ing-unit { color: var(--text-muted); font-size: 13px; min-width: 40px; }
 .ing-name { color: var(--text); }
 .steps-display-list { display: flex; flex-direction: column; gap: 10px; padding-left: 0; list-style: none; counter-reset: steps; }
 .steps-display-list li { counter-increment: steps; padding: 12px 16px 12px 48px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); position: relative; line-height: 1.5; }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Store } from '../store/useStore';
 import { scaleQty } from '../store/useStore';
 import type { Recipe, Ingredient } from '../types';
@@ -259,11 +259,19 @@ function RecipeDetail({
     }
   }
 
-  const displayIngredient = (ing: Ingredient) => {
-    if (ing.unit === 'al gusto') return 'al gusto';
-    const scaled = scaleQty(ing.quantity, recipe.base_servings, servings);
-    return `${scaled} ${ing.unit}`;
-  };
+  function getScaled(ing: Ingredient): number {
+    return scaleQty(ing.quantity, recipe.base_servings, servings);
+  }
+
+  function handleIngQtyChange(ing: Ingredient, raw: string) {
+    if (ing.unit === 'al gusto' || ing.quantity === 0) return;
+    const val = parseFloat(raw.replace(',', '.'));
+    if (!isNaN(val) && val > 0) {
+      const ratio = val / ing.quantity;
+      const newServings = Math.max(1, Math.round(recipe.base_servings * ratio));
+      setServings(newServings);
+    }
+  }
 
   return (
     <div className="recipe-detail">
@@ -308,7 +316,19 @@ function RecipeDetail({
           <ul className="ingredient-display-list">
             {ings.map(ing => (
               <li key={ing.id}>
-                <span className="ing-qty">{displayIngredient(ing)}</span>
+                {ing.unit === 'al gusto' || ing.quantity === 0 ? (
+                  <span className="ing-qty ing-qty-static">al gusto</span>
+                ) : (
+                  <input
+                    className="ing-qty ing-qty-input"
+                    type="number"
+                    min={0.1}
+                    step={0.1}
+                    value={getScaled(ing)}
+                    onChange={e => handleIngQtyChange(ing, e.target.value)}
+                  />
+                )}
+                <span className="ing-unit">{ing.unit !== 'al gusto' ? ing.unit : ''}</span>
                 <span className="ing-name">{ing.name}</span>
               </li>
             ))}
@@ -490,14 +510,44 @@ export default function RecipesPage({ store }: Props) {
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
 
+  // Push history when navigating into detail/form so browser back works
+  function goTo(v: View, recipe?: Recipe) {
+    if (v === 'detail' && recipe) {
+      window.history.pushState({ view: 'detail', recipeId: recipe.id }, '');
+      setSelected(recipe);
+    } else if (v === 'form') {
+      window.history.pushState({ view: 'form' }, '');
+    } else {
+      setSelected(null);
+      setEditing(null);
+    }
+    setView(v);
+  }
+
+  function goBack() {
+    setSelected(null);
+    setEditing(null);
+    setView('list');
+  }
+
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      const state = e.state as { view?: string; page?: string } | null;
+      if (!state || state.page) return; // page-level navigation handled in App
+      goBack();
+    };
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, []);
+
   if (view === 'form') {
     return (
       <RecipeForm
         store={store}
         initial={editing ?? undefined}
         onDone={() => {
-          if (editing) { setView('detail'); }
-          else { setView('list'); setEditing(null); }
+          if (editing) { window.history.back(); }
+          else { window.history.back(); }
         }}
       />
     );
@@ -508,8 +558,8 @@ export default function RecipesPage({ store }: Props) {
       <RecipeDetail
         recipe={selected}
         store={store}
-        onEdit={() => { setEditing(selected); setView('form'); }}
-        onBack={() => { setSelected(null); setView('list'); }}
+        onEdit={() => { setEditing(selected); goTo('form'); }}
+        onBack={() => window.history.back()}
       />
     );
   }
@@ -527,7 +577,7 @@ export default function RecipesPage({ store }: Props) {
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
             📋 Importar texto
           </button>
-          <button className="btn btn-primary" onClick={() => { setEditing(null); setView('form'); }}>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); goTo('form'); }}>
             + Nueva receta
           </button>
         </div>
@@ -553,7 +603,7 @@ export default function RecipesPage({ store }: Props) {
               <div
                 key={recipe.id}
                 className="recipe-card"
-                onClick={() => { setSelected(recipe); setView('detail'); }}
+                onClick={() => goTo('detail', recipe)}
               >
                 <div className="recipe-card-body">
                   <h3 className="recipe-card-name">{recipe.name}</h3>
@@ -573,7 +623,7 @@ export default function RecipesPage({ store }: Props) {
         <ImportModal
           store={store}
           onClose={() => setShowImport(false)}
-          onImported={recipe => { setSelected(recipe); setView('detail'); }}
+          onImported={recipe => goTo('detail', recipe)}
         />
       )}
     </div>
