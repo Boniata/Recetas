@@ -1,7 +1,8 @@
 import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const MIGRATION_KEY = 'migrated_to_firestore_v1';
+// Bump version to force re-run if previous attempt failed silently
+const MIGRATION_KEY = 'migrated_to_firestore_v3';
 
 export async function migrateFromLocalStorage(): Promise<boolean> {
   if (localStorage.getItem(MIGRATION_KEY)) return false;
@@ -19,12 +20,13 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
     }
   }
 
+  // Always mark as done if no local data to migrate
   if (!hasData) {
     localStorage.setItem(MIGRATION_KEY, 'true');
     return false;
   }
 
-  // Check Firestore isn't already populated
+  // If Firestore already has recipes, skip (migration already worked)
   const existing = await getDocs(collection(db, 'recipes'));
   if (!existing.empty) {
     localStorage.setItem(MIGRATION_KEY, 'true');
