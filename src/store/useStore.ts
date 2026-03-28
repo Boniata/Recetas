@@ -35,31 +35,25 @@ export function useStore() {
   useEffect(() => {
     let ready = 0;
     const done = () => { if (++ready >= 5) setLoading(false); };
+    const fail = (e: unknown) => { console.error('Firestore error:', e); done(); };
+
+    // Timeout fallback — never hang forever
+    const timeout = setTimeout(() => { if (ready < 5) setLoading(false); }, 8000);
 
     const unsubs = [
-      onSnapshot(collection(db, 'recipes'), snap => {
-        setRecipes(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Recipe));
-        done();
-      }),
-      onSnapshot(collection(db, 'ingredients'), snap => {
-        setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ingredient));
-        done();
-      }),
-      onSnapshot(collection(db, 'steps'), snap => {
-        setSteps(snap.docs.map(d => ({ id: d.id, ...d.data() }) as RecipeStep));
-        done();
-      }),
-      onSnapshot(collection(db, 'batches'), snap => {
-        setBatches(snap.docs.map(d => ({ id: d.id, ...d.data() }) as FreezerBatch));
-        done();
-      }),
-      onSnapshot(collection(db, 'mealPlan'), snap => {
-        setMealPlan(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MealPlanEntry));
-        done();
-      }),
+      onSnapshot(collection(db, 'recipes'),
+        snap => { setRecipes(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Recipe)); done(); }, fail),
+      onSnapshot(collection(db, 'ingredients'),
+        snap => { setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ingredient)); done(); }, fail),
+      onSnapshot(collection(db, 'steps'),
+        snap => { setSteps(snap.docs.map(d => ({ id: d.id, ...d.data() }) as RecipeStep)); done(); }, fail),
+      onSnapshot(collection(db, 'batches'),
+        snap => { setBatches(snap.docs.map(d => ({ id: d.id, ...d.data() }) as FreezerBatch)); done(); }, fail),
+      onSnapshot(collection(db, 'mealPlan'),
+        snap => { setMealPlan(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MealPlanEntry)); done(); }, fail),
     ];
 
-    return () => unsubs.forEach(u => u());
+    return () => { clearTimeout(timeout); unsubs.forEach(u => u()); };
   }, []);
 
   // ── Recipes ──

@@ -10,19 +10,16 @@ import type { Page } from './types';
 export default function App() {
   const [page, setPage] = useState<Page>('recipes');
   const store = useStore();
-  const [migrating, setMigrating] = useState(true);
 
   useEffect(() => {
-    migrateFromLocalStorage()
-      .catch(console.error)
-      .finally(() => setMigrating(false));
+    migrateFromLocalStorage().catch(console.error);
   }, []);
 
-  if (store.loading || migrating) {
+  if (store.loading) {
     return (
       <div className="app-loading">
         <div className="loading-spinner" />
-        <p>{migrating && !store.loading ? 'Migrando datos...' : 'Cargando...'}</p>
+        <p>Cargando...</p>
       </div>
     );
   }
