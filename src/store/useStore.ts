@@ -1,23 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  collection, doc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, writeBatch,
+} from 'firebase/firestore';
+import { db } from '../firebase';
 import type { Recipe, Ingredient, RecipeStep, FreezerBatch, MealPlanEntry } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function uid(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function save<T>(key: string, value: T): void {
-  localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function scaleQty(qty: number, base: number, target: number): number {
@@ -33,69 +25,92 @@ export function daysUntil(dateStr: string): number {
 // ── store ────────────────────────────────────────────────────────────────────
 
 export function useStore() {
-  const [recipes, setRecipes] = useState<Recipe[]>(() => load('recipes', []));
-  const [ingredients, setIngredients] = useState<Ingredient[]>(() => load('ingredients', []));
-  const [steps, setSteps] = useState<RecipeStep[]>(() => load('steps', []));
-  const [batches, setBatches] = useState<FreezerBatch[]>(() => load('batches', []));
-  const [mealPlan, setMealPlan] = useState<MealPlanEntry[]>(() => load('mealPlan', []));
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [steps, setSteps] = useState<RecipeStep[]>([]);
+  const [batches, setBatches] = useState<FreezerBatch[]>([]);
+  const [mealPlan, setMealPlan] = useState<MealPlanEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ready = 0;
+    const done = () => { if (++ready >= 5) setLoading(false); };
+
+    const unsubs = [
+      onSnapshot(collection(db, 'recipes'), snap => {
+        setRecipes(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Recipe));
+        done();
+      }),
+      onSnapshot(collection(db, 'ingredients'), snap => {
+        setIngredients(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Ingredient));
+        done();
+      }),
+      onSnapshot(collection(db, 'steps'), snap => {
+        setSteps(snap.docs.map(d => ({ id: d.id, ...d.data() }) as RecipeStep));
+        done();
+      }),
+      onSnapshot(collection(db, 'batches'), snap => {
+        setBatches(snap.docs.map(d => ({ id: d.id, ...d.data() }) as FreezerBatch));
+        done();
+      }),
+      onSnapshot(collection(db, 'mealPlan'), snap => {
+        setMealPlan(snap.docs.map(d => ({ id: d.id, ...d.data() }) as MealPlanEntry));
+        done();
+      }),
+    ];
+
+    return () => unsubs.forEach(u => u());
+  }, []);
 
   // ── Recipes ──
   const addRecipe = useCallback((data: Omit<Recipe, 'id' | 'created_at'>): Recipe => {
-    const recipe: Recipe = { ...data, id: uid(), created_at: new Date().toISOString() };
-    setRecipes(prev => {
-      const next = [...prev, recipe];
-      save('recipes', next);
-      return next;
-    });
+    const id = uid();
+    const recipe: Recipe = { ...data, id, created_at: new Date().toISOString() };
+    setDoc(doc(db, 'recipes', id), recipe).catch(console.error);
     return recipe;
   }, []);
 
   const updateRecipe = useCallback((id: string, data: Partial<Omit<Recipe, 'id' | 'created_at'>>) => {
-    setRecipes(prev => {
-      const next = prev.map(r => r.id === id ? { ...r, ...data } : r);
-      save('recipes', next);
-      return next;
-    });
+    updateDoc(doc(db, 'recipes', id), data as Record<string, unknown>).catch(console.error);
   }, []);
 
   const deleteRecipe = useCallback((id: string) => {
-    setRecipes(prev => { const next = prev.filter(r => r.id !== id); save('recipes', next); return next; });
-    setIngredients(prev => { const next = prev.filter(i => i.recipe_id !== id); save('ingredients', next); return next; });
-    setSteps(prev => { const next = prev.filter(s => s.recipe_id !== id); save('steps', next); return next; });
-  }, []);
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'recipes', id));
+    ingredients.filter(i => i.recipe_id === id).forEach(i => batch.delete(doc(db, 'ingredients', i.id)));
+    steps.filter(s => s.recipe_id === id).forEach(s => batch.delete(doc(db, 'steps', s.id)));
+    batch.commit().catch(console.error);
+  }, [ingredients, steps]);
 
   // ── Ingredients ──
   const setRecipeIngredients = useCallback((recipeId: string, items: Omit<Ingredient, 'id' | 'recipe_id'>[]) => {
-    setIngredients(prev => {
-      const others = prev.filter(i => i.recipe_id !== recipeId);
-      const next = [
-        ...others,
-        ...items.map(i => ({ ...i, id: uid(), recipe_id: recipeId })),
-      ];
-      save('ingredients', next);
-      return next;
+    const batch = writeBatch(db);
+    ingredients.filter(i => i.recipe_id === recipeId).forEach(i => batch.delete(doc(db, 'ingredients', i.id)));
+    items.forEach(item => {
+      const id = uid();
+      batch.set(doc(db, 'ingredients', id), { ...item, id, recipe_id: recipeId });
     });
-  }, []);
+    batch.commit().catch(console.error);
+  }, [ingredients]);
 
   // ── Steps ──
-  const setRecipeSteps = useCallback((recipeId: string, items: string[]) => {
-    setSteps(prev => {
-      const others = prev.filter(s => s.recipe_id !== recipeId);
-      const next = [
-        ...others,
-        ...items.map((desc, idx) => ({ id: uid(), recipe_id: recipeId, step_order: idx + 1, description: desc })),
-      ];
-      save('steps', next);
-      return next;
+  const setRecipeSteps = useCallback((recipeId: string, descriptions: string[]) => {
+    const batch = writeBatch(db);
+    steps.filter(s => s.recipe_id === recipeId).forEach(s => batch.delete(doc(db, 'steps', s.id)));
+    descriptions.forEach((description, idx) => {
+      const id = uid();
+      batch.set(doc(db, 'steps', id), { id, recipe_id: recipeId, step_order: idx + 1, description });
     });
-  }, []);
+    batch.commit().catch(console.error);
+  }, [steps]);
 
   // ── Batches ──
   const addBatch = useCallback((data: { recipe_id: string; servings_total: number; frozen_at?: string }): FreezerBatch => {
+    const id = uid();
     const frozenAt = data.frozen_at ?? new Date().toISOString();
     const bestBefore = new Date(new Date(frozenAt).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
     const batch: FreezerBatch = {
-      id: uid(),
+      id,
       recipe_id: data.recipe_id,
       servings_total: data.servings_total,
       servings_remaining: data.servings_total,
@@ -104,69 +119,52 @@ export function useStore() {
       best_before: bestBefore,
       status: 'active',
     };
-    setBatches(prev => {
-      const next = [...prev, batch];
-      save('batches', next);
-      return next;
-    });
+    setDoc(doc(db, 'batches', id), batch).catch(console.error);
     return batch;
   }, []);
 
   const consumeFromBatch = useCallback((batchId: string, amount: number): boolean => {
-    let ok = false;
-    setBatches(prev => {
-      const batch = prev.find(b => b.id === batchId);
-      if (!batch || batch.servings_remaining < amount) return prev;
-      ok = true;
-      const remaining = batch.servings_remaining - amount;
-      const next = prev.map(b =>
-        b.id === batchId
-          ? { ...b, servings_remaining: remaining, status: remaining === 0 ? 'consumed' : 'active' } as FreezerBatch
-          : b
-      );
-      save('batches', next);
-      return next;
-    });
-    return ok;
-  }, []);
+    const batch = batches.find(b => b.id === batchId);
+    if (!batch || batch.servings_remaining < amount) return false;
+    const remaining = batch.servings_remaining - amount;
+    updateDoc(doc(db, 'batches', batchId), {
+      servings_remaining: remaining,
+      status: remaining === 0 ? 'consumed' : 'active',
+    }).catch(console.error);
+    return true;
+  }, [batches]);
 
   const deleteBatch = useCallback((id: string) => {
-    setBatches(prev => { const next = prev.filter(b => b.id !== id); save('batches', next); return next; });
+    deleteDoc(doc(db, 'batches', id)).catch(console.error);
   }, []);
 
   // ── Meal Plan ──
   const addMealEntry = useCallback((entry: Omit<MealPlanEntry, 'id'>): MealPlanEntry => {
-    const item: MealPlanEntry = { ...entry, id: uid() };
-    setMealPlan(prev => {
-      const next = [...prev, item];
-      save('mealPlan', next);
-      return next;
-    });
+    const id = uid();
+    const item: MealPlanEntry = { ...entry, id };
+    setDoc(doc(db, 'mealPlan', id), item).catch(console.error);
     return item;
   }, []);
 
   const removeMealEntry = useCallback((id: string) => {
-    setMealPlan(prev => { const next = prev.filter(e => e.id !== id); save('mealPlan', next); return next; });
+    deleteDoc(doc(db, 'mealPlan', id)).catch(console.error);
   }, []);
 
   return {
-    // data
+    loading,
     recipes,
     ingredients,
     steps,
     batches,
     mealPlan,
-    // recipe ops
     addRecipe,
     updateRecipe,
     deleteRecipe,
     setRecipeIngredients,
     setRecipeSteps,
-    // batch ops
     addBatch,
     consumeFromBatch,
     deleteBatch,
-    // meal plan ops
     addMealEntry,
     removeMealEntry,
   };

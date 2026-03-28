@@ -10,6 +10,15 @@ export default function App() {
   const [page, setPage] = useState<Page>('recipes');
   const store = useStore();
 
+  if (store.loading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-spinner" />
+        <p>Cargando...</p>
+      </div>
+    );
+  }
+
   function renderPage() {
     switch (page) {
       case 'recipes': return <RecipesPage store={store} />;
