@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
+import { migrateFromLocalStorage } from './store/migrate';
 import Layout from './components/Layout';
 import RecipesPage from './pages/RecipesPage';
 import FreezerPage from './pages/FreezerPage';
@@ -9,12 +10,19 @@ import type { Page } from './types';
 export default function App() {
   const [page, setPage] = useState<Page>('recipes');
   const store = useStore();
+  const [migrating, setMigrating] = useState(true);
 
-  if (store.loading) {
+  useEffect(() => {
+    migrateFromLocalStorage()
+      .catch(console.error)
+      .finally(() => setMigrating(false));
+  }, []);
+
+  if (store.loading || migrating) {
     return (
       <div className="app-loading">
         <div className="loading-spinner" />
-        <p>Cargando...</p>
+        <p>{migrating && !store.loading ? 'Migrando datos...' : 'Cargando...'}</p>
       </div>
     );
   }
