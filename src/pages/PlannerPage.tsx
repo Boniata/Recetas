@@ -31,7 +31,10 @@ function addDays(date: Date, n: number): Date {
 }
 
 function toDateStr(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function formatShortDate(date: Date): string {
@@ -278,6 +281,7 @@ export default function PlannerPage({ store }: Props) {
     <div className="page planner-page">
       <div className="page-header">
         <h1 className="page-title">Planificador</h1>
+        <span style={{fontSize:'10px',color:'#aaa',marginLeft:8}}>v{__BUILD_TIME__.slice(0,16).replace('T',' ')}</span>
         <div className="planner-nav">
           <button className="btn btn-ghost btn-sm" onClick={prevWeek}>← Anterior</button>
           <span className="week-label">{weekLabel}</span>
