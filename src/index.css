@@ -205,26 +205,16 @@ body { margin: 0; }
   .form-actions { flex-direction: column-reverse; }
   .form-actions .btn { width: 100%; justify-content: center; }
 
-  /* Ingredient rows — stack unit+qty below name */
-  .ingredient-row {
-    grid-template-columns: 1fr 32px;
-    grid-template-rows: auto auto;
-  }
-  .ingredient-row .ingredient-name { grid-column: 1; grid-row: 1; }
-  .ingredient-row .ingredient-qty  { grid-column: 1; grid-row: 2; }
-  .ingredient-row .ingredient-unit { grid-column: 1; grid-row: 2; }
-  .ingredient-row .btn-icon        { grid-column: 2; grid-row: 1 / 3; align-self: center; }
-
-  /* Re-layout ingredient row as: [name] [x] / [qty] [unit] */
+  /* Ingredient rows — name full width on top, qty+unit below, delete on right */
   .ingredient-row {
     grid-template-columns: 1fr 1fr 36px;
     grid-template-rows: auto auto;
     gap: 6px 8px;
   }
-  .ingredient-name { grid-column: 1 / 3; grid-row: 1; }
-  .ingredient-qty  { grid-column: 1;     grid-row: 2; }
-  .ingredient-unit { grid-column: 2;     grid-row: 2; }
-  .btn-icon        { grid-column: 3;     grid-row: 1 / 3; align-self: center; }
+  .ingredient-row .ingredient-name { grid-column: 1 / 3; grid-row: 1; }
+  .ingredient-row .ingredient-qty  { grid-column: 1;     grid-row: 2; }
+  .ingredient-row .ingredient-unit { grid-column: 2;     grid-row: 2; }
+  .ingredient-row .btn-icon        { grid-column: 3;     grid-row: 1 / 3; align-self: center; }
 
   /* Forms */
   .form-row { grid-template-columns: 1fr; }
