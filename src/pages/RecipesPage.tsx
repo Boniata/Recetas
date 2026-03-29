@@ -32,7 +32,7 @@ function RecipeForm({
 }: {
   store: Store;
   initial?: Recipe;
-  onDone: () => void;
+  onDone: (saved?: boolean) => void;
 }) {
   const existingIngredients = initial
     ? store.ingredients.filter(i => i.recipe_id === initial.id)
@@ -46,7 +46,6 @@ function RecipeForm({
   const [isFreezable, setIsFreezable] = useState(initial?.is_freezable ?? true);
   const [usesFreezer, setUsesFreezer] = useState(initial?.uses_freezer ?? false);
   const [reheatInstructions, setReheatInstructions] = useState(initial?.reheat_instructions ?? '');
-  const [savedOk, setSavedOk] = useState(false);
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>(
     existingIngredients.length
       ? existingIngredients.map(i => ({ name: i.name, quantity: String(i.quantity), unit: i.unit }))
@@ -106,15 +105,13 @@ function RecipeForm({
       store.setRecipeIngredients(recipe.id, parsedIngredients);
       store.setRecipeSteps(recipe.id, parsedSteps);
     }
-    setSavedOk(true);
-    setTimeout(() => onDone(), 1200);
+    onDone(true);
   }
 
   return (
     <form className="recipe-form" onSubmit={handleSubmit}>
       <h1 className="page-title">{initial ? 'Editar receta' : 'Nueva receta'}</h1>
 
-      {savedOk && <div className="alert alert-success">✓ Receta guardada</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="form-group">
@@ -247,7 +244,7 @@ function RecipeForm({
       </div>
 
       <div className="form-actions">
-        <button type="button" className="btn btn-secondary" onClick={onDone}>Cancelar</button>
+        <button type="button" className="btn btn-secondary" onClick={() => onDone()}>Cancelar</button>
         <button type="submit" className="btn btn-primary">Guardar receta</button>
       </div>
     </form>
@@ -596,6 +593,7 @@ export default function RecipesPage({ store }: Props) {
   const [editing, setEditing] = useState<Recipe | null>(null);
   const [search, setSearch] = useState('');
   const [showImport, setShowImport] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
 
   // Push history when navigating into detail/form so browser back works
   function goTo(v: View, recipe?: Recipe) {
@@ -632,9 +630,9 @@ export default function RecipesPage({ store }: Props) {
       <RecipeForm
         store={store}
         initial={editing ?? undefined}
-        onDone={() => {
-          if (editing) { window.history.back(); }
-          else { window.history.back(); }
+        onDone={(saved) => {
+          if (saved) setSavedMsg(true);
+          window.history.back();
         }}
       />
     );
@@ -669,6 +667,13 @@ export default function RecipesPage({ store }: Props) {
           </button>
         </div>
       </div>
+
+      {savedMsg && (
+        <div className="alert alert-success" onAnimationEnd={() => setSavedMsg(false)}
+          style={{ animation: 'fadeOut 3s forwards' }}>
+          ✓ Receta guardada
+        </div>
+      )}
 
       <input
         className="input search-input"

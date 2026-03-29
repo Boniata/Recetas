@@ -432,7 +432,8 @@ input[type="range"].slider::-moz-range-thumb {
 .alert { padding: 10px 16px; border-radius: var(--radius); font-size: 14px; margin-bottom: 16px; }
 .alert-danger   { background: var(--danger-light); color: var(--danger); border: 1px solid var(--danger); }
 .alert-warning  { background: var(--warning-light); color: var(--warning); border: 1px solid var(--warning); }
-.alert-success  { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+.alert-success  { background: var(--success-light); color: var(--success); border: 1px solid var(--success); }
+@keyframes fadeOut { 0%,70% { opacity:1; } 100% { opacity:0; } }
 
 /* ── Modal ────────────────────────────────────────────────────────────────── */
 .modal-overlay {

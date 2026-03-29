@@ -252,26 +252,34 @@ function AddMealModal({
                       </select>
                     </div>
                   )}
-                  {activeBatches.length > 0 && (
-                    <div className="form-group">
-                      <label>Lote a consumir (opcional)</label>
-                      <select className="select" value={batchId}
-                        onChange={e => {
-                          setBatchId(e.target.value);
-                          const b = activeBatches.find(b => b.id === e.target.value);
-                          if (b) setServings(Math.min(servings, b.servings_remaining));
-                        }}>
-                        <option value="">Sin lote</option>
-                        {activeBatches.map(b => {
-                          const name = store.recipes.find(r => r.id === b.recipe_id)?.name ?? '—';
-                          return <option key={b.id} value={b.id}>{name} — {b.servings_remaining} rac.</option>;
-                        })}
-                      </select>
+                  <div className="form-group">
+                    <label>Lote del congelador a usar</label>
+                    <select className="select" value={batchId}
+                      onChange={e => {
+                        setBatchId(e.target.value);
+                        const b = activeBatches.find(b => b.id === e.target.value);
+                        if (b) setServings(Math.min(servings, b.servings_remaining));
+                      }}>
+                      <option value="">Sin lote (no descontar stock)</option>
+                      {activeBatches.map(b => {
+                        const name = store.recipes.find(r => r.id === b.recipe_id)?.name ?? '—';
+                        const days = daysUntil(b.best_before);
+                        const expiry = days < 0 ? 'Caducado' : `${days}d restantes`;
+                        return <option key={b.id} value={b.id}>{name} — {b.servings_remaining} rac. ({expiry})</option>;
+                      })}
+                    </select>
+                  </div>
+                  {selectedBatch && (
+                    <div className="batch-info-row">
+                      <Badge
+                        label={`${selectedBatch.servings_remaining} raciones disponibles`}
+                        variant={selectedBatch.servings_remaining <= 2 ? 'yellow' : 'green'}
+                      />
                     </div>
                   )}
                   <div className="scaling-box">
                     <div className="scaling-label">
-                      <span>Raciones</span>
+                      <span>Raciones a preparar</span>
                       <strong className="scaling-value">{servings}</strong>
                     </div>
                     <input type="range" min={1} max={selectedBatch ? selectedBatch.servings_remaining : 20}
