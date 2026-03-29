@@ -242,7 +242,7 @@ function RecipeForm({
 // ── Recipe Detail ──────────────────────────────────────────────────────────────
 
 function RecipeDetail({
-  recipe,
+  recipe: recipeProp,
   store,
   onEdit,
   onBack,
@@ -252,6 +252,9 @@ function RecipeDetail({
   onEdit: () => void;
   onBack: () => void;
 }) {
+  // Always read from store so Firestore updates (e.g. another user edits) are reflected live
+  const recipe = store.recipes.find(r => r.id === recipeProp.id) ?? recipeProp;
+
   const [servings, setServings] = useState(recipe.base_servings);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchServings, setBatchServings] = useState(recipe.base_servings);
@@ -261,6 +264,9 @@ function RecipeDetail({
   const stps = store.steps
     .filter(s => s.recipe_id === recipe.id)
     .sort((a, b) => a.step_order - b.step_order);
+
+  // Keep local servings in sync if base_servings changes in Firestore
+  useEffect(() => { setServings(recipe.base_servings); }, [recipe.base_servings]);
 
   function handleCreateBatch() {
     store.addBatch({ recipe_id: recipe.id, servings_total: batchServings });
