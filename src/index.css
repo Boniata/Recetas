@@ -248,8 +248,11 @@ body { margin: 0; }
   .day-header { padding: 8px 4px; }
   .day-slot { min-height: 70px; padding: 4px; }
   .slot-add-btn { width: 28px; height: 28px; font-size: 18px; }
-  .planner-nav { gap: 6px; }
-  .week-label { font-size: 13px; min-width: 140px; }
+  .planner-page .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .planner-page .page-title { display: none; } /* shown in layout header already */
+  .planner-nav { flex-wrap: nowrap; justify-content: space-between; width: 100%; }
+  .week-label { font-size: 13px; min-width: unset; flex: 1; text-align: center; }
+  .planner-nav .btn { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
 
   /* Modals — full screen on mobile */
   .modal-overlay { padding: 0; align-items: flex-end; }
