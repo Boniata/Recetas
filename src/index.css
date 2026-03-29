@@ -522,6 +522,39 @@ input[type="range"].slider::-moz-range-thumb {
   .week-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
+/* Show/hide desktop vs mobile layouts */
+.desktop-only { display: block; }
+.mobile-only  { display: none; }
+@media (max-width: 768px) {
+  .desktop-only { display: none; }
+  .mobile-only  { display: flex; }
+}
+
+/* Mobile vertical day cards */
+.mobile-week-list {
+  flex-direction: column; gap: 12px;
+}
+.mobile-day-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); overflow: hidden;
+}
+.mobile-day-card.today { border-color: var(--primary); }
+.mobile-day-header {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 10px 14px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.mobile-day-card.today .mobile-day-header { background: var(--primary-light); }
+.mobile-day-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+.mobile-day-date { font-size: 15px; font-weight: 600; color: var(--text); }
+.mobile-meal-section {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
+.mobile-meal-section:last-child { border-bottom: none; }
+.mobile-meal-label { font-size: 12px; font-weight: 600; color: var(--text-muted); width: 60px; flex-shrink: 0; padding-top: 3px; }
+.mobile-meal-entries { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; }
+
 .entry-chip {
   display: flex; align-items: center; gap: 4px;
   padding: 3px 6px; border-radius: 6px;

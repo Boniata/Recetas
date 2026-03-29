@@ -292,7 +292,8 @@ export default function PlannerPage({ store }: Props) {
         </div>
       </div>
 
-      <div className="week-grid">
+      {/* Desktop: horizontal grid */}
+      <div className="week-grid desktop-only">
         {/* Header row */}
         <div className="week-header-row">
           <div className="meal-label-col" />
@@ -337,6 +338,46 @@ export default function PlannerPage({ store }: Props) {
             })}
           </div>
         ))}
+      </div>
+
+      {/* Mobile: vertical day cards */}
+      <div className="mobile-week-list mobile-only">
+        {weekDays.map((day, i) => {
+          const isToday = toDateStr(day) === toDateStr(new Date());
+          const dateStr = toDateStr(day);
+          return (
+            <div key={i} className={`mobile-day-card${isToday ? ' today' : ''}`}>
+              <div className="mobile-day-header">
+                <span className="mobile-day-name">{DAYS[i]}</span>
+                <span className="mobile-day-date">{formatShortDate(day)}</span>
+              </div>
+              {MEALS.map(meal => {
+                const entries = getEntries(day, meal.id);
+                return (
+                  <div key={meal.id} className="mobile-meal-section">
+                    <div className="mobile-meal-label">{meal.label}</div>
+                    <div className="mobile-meal-entries">
+                      {entries.map(entry => (
+                        <EntryChip
+                          key={entry.id}
+                          entry={entry}
+                          store={store}
+                          onRemove={() => store.removeMealEntry(entry.id)}
+                        />
+                      ))}
+                      <button
+                        className="slot-add-btn"
+                        onClick={() => setAdding({ date: dateStr, mealType: meal.id })}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
       {adding && (
