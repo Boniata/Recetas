@@ -482,7 +482,7 @@ input[type="range"].slider::-moz-range-thumb {
   overflow: hidden; background: var(--surface);
 }
 .week-header-row {
-  display: grid; grid-template-columns: 90px repeat(7, 1fr);
+  display: grid; grid-template-columns: 90px repeat(7, minmax(90px, 1fr));
   background: var(--surface2); border-bottom: 1px solid var(--border);
 }
 .meal-label-col {
@@ -496,7 +496,7 @@ input[type="range"].slider::-moz-range-thumb {
 .day-name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
 .day-date { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; }
 
-.meal-row { display: grid; grid-template-columns: 90px repeat(7, 1fr); border-bottom: 1px solid var(--border); }
+.meal-row { display: grid; grid-template-columns: 90px repeat(7, minmax(90px, 1fr)); border-bottom: 1px solid var(--border); }
 .meal-row:last-child { border-bottom: none; }
 .meal-label-col { min-height: 80px; }
 .meal-label-col span { font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -504,6 +504,7 @@ input[type="range"].slider::-moz-range-thumb {
 .day-slot {
   padding: 6px; border-right: 1px solid var(--border);
   min-height: 80px; display: flex; flex-direction: column; gap: 4px;
+  min-width: 0; overflow: hidden;
 }
 .day-slot:last-child { border-right: none; }
 
@@ -525,6 +526,7 @@ input[type="range"].slider::-moz-range-thumb {
   display: flex; align-items: center; gap: 4px;
   padding: 3px 6px; border-radius: 6px;
   font-size: 11px; font-weight: 500; border: 1px solid;
+  min-width: 0; overflow: hidden;
 }
 .chip-freeze { background: #e0f2fe; border-color: #7dd3fc; color: #0369a1; }
 .chip-cook   { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
