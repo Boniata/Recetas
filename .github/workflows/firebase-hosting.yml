@@ -24,11 +24,18 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: recetas-749f3
+          channelId: live
+
+      - name: Deploy Firestore Rules
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          npx firebase-tools@latest deploy --only hosting --project recetas-749f3 --non-interactive
           npx firebase-tools@latest deploy --only firestore --project recetas-749f3 --non-interactive || echo "Firestore rules deploy skipped"
-          rm /tmp/sa.json
+          rm -f /tmp/sa.json
