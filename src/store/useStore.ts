@@ -118,6 +118,7 @@ export function useStore() {
       best_before: bestBefore,
       status: 'active',
     };
+    setBatches(prev => [...prev, batch]); // optimistic
     setDoc(doc(db, 'batches', id), batch).catch(console.error);
     return batch;
   }, []);
@@ -126,14 +127,14 @@ export function useStore() {
     const batch = batches.find(b => b.id === batchId);
     if (!batch || batch.servings_remaining < amount) return false;
     const remaining = batch.servings_remaining - amount;
-    updateDoc(doc(db, 'batches', batchId), {
-      servings_remaining: remaining,
-      status: remaining === 0 ? 'consumed' : 'active',
-    }).catch(console.error);
+    const status = remaining === 0 ? 'consumed' : 'active';
+    setBatches(prev => prev.map(b => b.id === batchId ? { ...b, servings_remaining: remaining, status } : b)); // optimistic
+    updateDoc(doc(db, 'batches', batchId), { servings_remaining: remaining, status }).catch(console.error);
     return true;
   }, [batches]);
 
   const deleteBatch = useCallback((id: string) => {
+    setBatches(prev => prev.filter(b => b.id !== id)); // optimistic
     deleteDoc(doc(db, 'batches', id)).catch(console.error);
   }, []);
 
@@ -141,11 +142,13 @@ export function useStore() {
   const addMealEntry = useCallback((entry: Omit<MealPlanEntry, 'id'>): MealPlanEntry => {
     const id = uid();
     const item: MealPlanEntry = { ...entry, id };
+    setMealPlan(prev => [...prev, item]); // optimistic
     setDoc(doc(db, 'mealPlan', id), item).catch(console.error);
     return item;
   }, []);
 
   const removeMealEntry = useCallback((id: string) => {
+    setMealPlan(prev => prev.filter(e => e.id !== id)); // optimistic
     deleteDoc(doc(db, 'mealPlan', id)).catch(console.error);
   }, []);
 
