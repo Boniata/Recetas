@@ -250,9 +250,6 @@ body { margin: 0; }
   .slot-add-btn { width: 28px; height: 28px; font-size: 18px; }
   .planner-page .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .planner-page .page-title { display: none; } /* shown in layout header already */
-  .planner-nav { flex-wrap: nowrap; justify-content: space-between; width: 100%; }
-  .week-label { font-size: 13px; min-width: unset; flex: 1; text-align: center; }
-  .planner-nav .btn { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
 
   /* Modals — full screen on mobile */
   .modal-overlay { padding: 0; align-items: flex-end; }
@@ -473,6 +470,13 @@ input[type="range"].slider::-moz-range-thumb {
 .planner-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .week-label { font-weight: 600; font-size: 15px; color: var(--text); min-width: 180px; text-align: center; }
 
+/* Mobile planner nav fix — must be AFTER base .planner-nav { flex-wrap: wrap } above */
+@media (max-width: 768px) {
+  .planner-nav { flex-wrap: nowrap; justify-content: space-between; width: 100%; }
+  .week-label { font-size: 13px; min-width: unset; flex: 1; }
+  .planner-nav .btn { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+}
+
 .week-grid {
   border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden; background: var(--surface);
@@ -539,6 +543,7 @@ input[type="range"].slider::-moz-range-thumb {
 }
 .type-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.batch-note { font-size: 13px; color: var(--primary); background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 6px; padding: 10px 12px; margin-top: 4px; }
 .checkbox-label input { accent-color: var(--primary); width: 15px; height: 15px; }
 .empty-state-sm { padding: 20px; text-align: center; color: var(--text-muted); font-size: 14px; }
 

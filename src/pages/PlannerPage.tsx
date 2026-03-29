@@ -51,52 +51,41 @@ function AddMealModal({
   mealType: 'comida' | 'cena';
   onClose: () => void;
 }) {
-  const [type, setType] = useState<'cook' | 'freeze'>('cook');
+  // 'cook' = cocinar normal, 'batch' = cocinar y congelar, 'freeze' = usar del congelador
+  const [type, setType] = useState<'cook' | 'batch' | 'freeze'>('cook');
   const [recipeId, setRecipeId] = useState('');
   const [batchId, setBatchId] = useState('');
   const [servings, setServings] = useState(2);
-  const [createBatch, setCreateBatch] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
   const activeBatches = store.batches.filter(b => b.status === 'active');
   const selectedBatch = activeBatches.find(b => b.id === batchId);
-  const selectedRecipe = store.recipes.find(r => r.id === recipeId);
+  const freezableRecipes = store.recipes.filter(r => r.is_freezable);
+  const normalRecipes = store.recipes.filter(r => !r.is_freezable);
+
+  function pickRecipe(id: string) {
+    setRecipeId(id);
+    setServings(store.recipes.find(r => r.id === id)?.base_servings ?? 2);
+  }
 
   function handleAdd() {
     setError('');
 
-    if (type === 'cook') {
+    if (type === 'cook' || type === 'batch') {
       if (!recipeId) { setError('Selecciona una receta.'); return; }
-
-      store.addMealEntry({
-        date,
-        meal_type: mealType,
-        type: 'cook',
-        recipe_id: recipeId,
-        servings_used: servings,
-      });
-
-      if (createBatch && selectedRecipe?.is_freezable) {
+      store.addMealEntry({ date, meal_type: mealType, type: 'cook', recipe_id: recipeId, servings_used: servings });
+      if (type === 'batch') {
         store.addBatch({ recipe_id: recipeId, servings_total: servings });
       }
     } else {
       if (!batchId) { setError('Selecciona un lote del congelador.'); return; }
       if (!selectedBatch) { setError('Lote no encontrado.'); return; }
       if (servings > selectedBatch.servings_remaining) {
-        setError(`Solo hay ${selectedBatch.servings_remaining} raciones disponibles.`);
-        return;
+        setError(`Solo hay ${selectedBatch.servings_remaining} raciones disponibles.`); return;
       }
-
       store.consumeFromBatch(batchId, servings);
-      store.addMealEntry({
-        date,
-        meal_type: mealType,
-        type: 'freeze',
-        batch_id: batchId,
-        recipe_id: selectedBatch.recipe_id,
-        servings_used: servings,
-      });
+      store.addMealEntry({ date, meal_type: mealType, type: 'freeze', batch_id: batchId, recipe_id: selectedBatch.recipe_id, servings_used: servings });
     }
 
     setDone(true);
@@ -115,35 +104,45 @@ function AddMealModal({
       ) : (
         <>
           <div className="type-tabs">
-            <button
-              className={`type-tab${type === 'cook' ? ' active' : ''}`}
-              onClick={() => { setType('cook'); setError(''); }}
-            >
+            <button className={`type-tab${type === 'cook' ? ' active' : ''}`} onClick={() => { setType('cook'); setRecipeId(''); setError(''); }}>
               🍳 Cocinar
             </button>
-            <button
-              className={`type-tab${type === 'freeze' ? ' active' : ''}`}
-              onClick={() => { setType('freeze'); setError(''); }}
-            >
+            <button className={`type-tab${type === 'batch' ? ' active' : ''}`} onClick={() => { setType('batch'); setRecipeId(''); setError(''); }}>
+              🥘 Cocinar y congelar
+            </button>
+            <button className={`type-tab${type === 'freeze' ? ' active' : ''}`} onClick={() => { setType('freeze'); setError(''); }}>
               ❄️ Del congelador
             </button>
           </div>
 
           {error && <div className="alert alert-danger">{error}</div>}
 
-          {type === 'cook' ? (
+          {(type === 'cook' || type === 'batch') ? (
             <div className="modal-form">
               <div className="form-group">
-                <label>Receta</label>
-                <select
-                  className="select"
-                  value={recipeId}
-                  onChange={e => { setRecipeId(e.target.value); setServings(store.recipes.find(r => r.id === e.target.value)?.base_servings ?? 2); }}
-                >
+                <label>{type === 'batch' ? 'Receta para congelar' : 'Receta'}</label>
+                <select className="select" value={recipeId} onChange={e => pickRecipe(e.target.value)}>
                   <option value="">Seleccionar receta...</option>
-                  {store.recipes.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}{r.is_freezable ? ' ❄️' : ''}</option>
-                  ))}
+                  {type === 'batch' ? (
+                    // Batch cooking: only show freezable recipes
+                    freezableRecipes.length > 0
+                      ? freezableRecipes.map(r => <option key={r.id} value={r.id}>❄️ {r.name}</option>)
+                      : <option disabled>No hay recetas congelables</option>
+                  ) : (
+                    // Normal cook: show all, grouped
+                    <>
+                      {normalRecipes.length > 0 && (
+                        <optgroup label="Recetas normales">
+                          {normalRecipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </optgroup>
+                      )}
+                      {freezableRecipes.length > 0 && (
+                        <optgroup label="Congelables ❄️">
+                          {freezableRecipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </optgroup>
+                      )}
+                    </>
+                  )}
                 </select>
               </div>
               <div className="scaling-box">
@@ -151,22 +150,11 @@ function AddMealModal({
                   <span>Raciones</span>
                   <strong className="scaling-value">{servings}</strong>
                 </div>
-                <input
-                  type="range" min={1} max={20} value={servings}
-                  onChange={e => setServings(parseInt(e.target.value))}
-                  className="slider"
-                />
+                <input type="range" min={1} max={20} value={servings} onChange={e => setServings(parseInt(e.target.value))} className="slider" />
                 <div className="scaling-hints"><span>1</span><span>20</span></div>
               </div>
-              {selectedRecipe?.is_freezable && (
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={createBatch}
-                    onChange={e => setCreateBatch(e.target.checked)}
-                  />
-                  Crear lote en el congelador con estas raciones
-                </label>
+              {type === 'batch' && (
+                <p className="batch-note">Se añadirá al planificador y se creará un lote de {servings} raciones en el congelador.</p>
               )}
             </div>
           ) : (
