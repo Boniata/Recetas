@@ -658,6 +658,7 @@ export default function RecipesPage({ store }: Props) {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Recetas</h1>
+        <span style={{fontSize:'10px',color:'#aaa'}}>v{__BUILD_TIME__.slice(0,16).replace('T',' ')}</span>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
             📋 Importar texto
