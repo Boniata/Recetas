@@ -514,6 +514,11 @@ input[type="range"].slider::-moz-range-thumb {
 }
 .slot-add-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
+/* Mobile planner fix — must be AFTER base .week-grid { overflow: hidden } above */
+@media (max-width: 768px) {
+  .week-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
 .entry-chip {
   display: flex; align-items: center; gap: 4px;
   padding: 3px 6px; border-radius: 6px;
