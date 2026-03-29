@@ -23,38 +23,24 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Validate service account secret
+      - name: Check build output
+        run: |
+          echo "=== dist contents ==="
+          ls -la dist/
+          echo "=== index.html ==="
+          cat dist/index.html
+
+      - name: Deploy to Firebase Hosting
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "ERROR: FIREBASE_SERVICE_ACCOUNT secret is empty or not set!"
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT secret is empty!"
             exit 1
           fi
-          echo "Secret length: ${#FIREBASE_SERVICE_ACCOUNT}"
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
-          if python3 -c "import json,sys; json.load(open('/tmp/sa.json'))" 2>&1; then
-            echo "JSON is valid"
-            python3 -c "import json; d=json.load(open('/tmp/sa.json')); print('type:', d.get('type')); print('project_id:', d.get('project_id')); print('client_email:', d.get('client_email','')[:30]+'...')"
-          else
-            echo "ERROR: JSON is invalid!"
-            exit 1
-          fi
-          rm -f /tmp/sa.json
-
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: recetas-749f3
-          channelId: live
-
-      - name: Deploy Firestore Rules
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          npx firebase-tools@latest deploy --only firestore --project recetas-749f3 --non-interactive || echo "Firestore rules deploy skipped"
+          npx firebase-tools@latest deploy --only hosting --project recetas-749f3 --non-interactive
+          echo "=== HOSTING DEPLOY DONE ==="
+          npx firebase-tools@latest deploy --only firestore --project recetas-749f3 --non-interactive || echo "Firestore rules skipped"
           rm -f /tmp/sa.json
