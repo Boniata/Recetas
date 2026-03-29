@@ -25,17 +25,10 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         env:
-          A: "1//037EscGt"
-          B: "PhmNoCgYIAR"
-          C: "AAGAMSNwF-L"
-          D: "9IrPXvawv1_"
-          E: "jDHC7WftQjR"
-          F: "ogM3RdPNxw_"
-          G: "MaFlLuA5FPf"
-          H: "F38ug4_Nye6"
-          I: "Kbyn4hC4uD7"
-          J: "7DfU"
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          T="${A}${B}${C}${D}${E}${F}${G}${H}${I}${J}"
-          npx firebase-tools@latest deploy --only hosting --token "$T" --project recetas-749f3 --non-interactive
-          npx firebase-tools@latest deploy --only firestore --token "$T" --project recetas-749f3 --non-interactive || echo "Firestore rules deploy failed (non-fatal)"
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          npx firebase-tools@latest deploy --only hosting --project recetas-749f3 --non-interactive
+          npx firebase-tools@latest deploy --only firestore --project recetas-749f3 --non-interactive || echo "Firestore rules deploy skipped"
+          rm /tmp/sa.json
