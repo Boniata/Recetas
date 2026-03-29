@@ -632,7 +632,8 @@ export default function RecipesPage({ store }: Props) {
         initial={editing ?? undefined}
         onDone={(saved) => {
           if (saved) setSavedMsg(true);
-          window.history.back();
+          setEditing(null);
+          setView('list');
         }}
       />
     );

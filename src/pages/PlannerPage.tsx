@@ -68,7 +68,6 @@ function AddMealModal({
   const selectedBatch = activeBatches.find(b => b.id === batchId);
   const freezableRecipes = store.recipes.filter(r => r.is_freezable);
   const normalRecipes = store.recipes.filter(r => !r.is_freezable);
-  const usesFreezerRecipes = store.recipes.filter(r => r.uses_freezer);
 
   function pickRecipe(id: string) {
     setRecipeId(id);
@@ -86,15 +85,14 @@ function AddMealModal({
       }
     } else {
       if (freezeMode === 'recipe') {
-        if (!recipeId) { setError('Selecciona una receta.'); return; }
-        // optionally consume from a batch
-        if (batchId && selectedBatch) {
-          if (servings > selectedBatch.servings_remaining) {
-            setError(`Solo hay ${selectedBatch.servings_remaining} raciones disponibles.`); return;
-          }
-          store.consumeFromBatch(batchId, servings);
+        // "Con ingrediente congelado": batch required, recipe optional
+        if (!batchId || !selectedBatch) { setError('Selecciona un lote del congelador.'); return; }
+        if (servings > selectedBatch.servings_remaining) {
+          setError(`Solo hay ${selectedBatch.servings_remaining} raciones disponibles.`); return;
         }
-        store.addMealEntry({ date, meal_type: mealType, type: 'cook', recipe_id: recipeId, servings_used: servings });
+        store.consumeFromBatch(batchId, servings);
+        const rid = recipeId || selectedBatch.recipe_id;
+        store.addMealEntry({ date, meal_type: mealType, type: 'cook', recipe_id: rid, servings_used: servings });
       } else {
         if (!batchId) { setError('Selecciona un lote del congelador.'); return; }
         if (!selectedBatch) { setError('Lote no encontrado.'); return; }
@@ -240,53 +238,51 @@ function AddMealModal({
                   </>
                 )
               ) : (
-                <>
-                  {usesFreezerRecipes.length === 0 ? (
-                    <div className="empty-state-sm">No hay recetas marcadas como "usa stock del congelador".</div>
-                  ) : (
+                activeBatches.length === 0 ? (
+                  <div className="empty-state-sm">No hay lotes en el congelador.</div>
+                ) : (
+                  <>
                     <div className="form-group">
-                      <label>Receta</label>
-                      <select className="select" value={recipeId} onChange={e => pickRecipe(e.target.value)}>
-                        <option value="">Seleccionar receta...</option>
-                        {usesFreezerRecipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      <label>Lote del congelador a usar</label>
+                      <select className="select" value={batchId}
+                        onChange={e => {
+                          setBatchId(e.target.value);
+                          const b = activeBatches.find(b => b.id === e.target.value);
+                          if (b) setServings(Math.min(servings, b.servings_remaining));
+                        }}>
+                        <option value="">Seleccionar lote...</option>
+                        {activeBatches.map(b => {
+                          const name = store.recipes.find(r => r.id === b.recipe_id)?.name ?? '—';
+                          const days = daysUntil(b.best_before);
+                          const expiry = days < 0 ? 'Caducado' : `${days}d restantes`;
+                          return <option key={b.id} value={b.id}>{name} — {b.servings_remaining} rac. ({expiry})</option>;
+                        })}
                       </select>
                     </div>
-                  )}
-                  <div className="form-group">
-                    <label>Lote del congelador a usar</label>
-                    <select className="select" value={batchId}
-                      onChange={e => {
-                        setBatchId(e.target.value);
-                        const b = activeBatches.find(b => b.id === e.target.value);
-                        if (b) setServings(Math.min(servings, b.servings_remaining));
-                      }}>
-                      <option value="">Sin lote (no descontar stock)</option>
-                      {activeBatches.map(b => {
-                        const name = store.recipes.find(r => r.id === b.recipe_id)?.name ?? '—';
-                        const days = daysUntil(b.best_before);
-                        const expiry = days < 0 ? 'Caducado' : `${days}d restantes`;
-                        return <option key={b.id} value={b.id}>{name} — {b.servings_remaining} rac. ({expiry})</option>;
-                      })}
-                    </select>
-                  </div>
-                  {selectedBatch && (
-                    <div className="batch-info-row">
-                      <Badge
-                        label={`${selectedBatch.servings_remaining} raciones disponibles`}
-                        variant={selectedBatch.servings_remaining <= 2 ? 'yellow' : 'green'}
-                      />
-                    </div>
-                  )}
-                  <div className="scaling-box">
-                    <div className="scaling-label">
-                      <span>Raciones a preparar</span>
-                      <strong className="scaling-value">{servings}</strong>
-                    </div>
-                    <input type="range" min={1} max={selectedBatch ? selectedBatch.servings_remaining : 20}
-                      value={servings} onChange={e => setServings(parseInt(e.target.value))} className="slider" />
-                    <div className="scaling-hints"><span>1</span><span>{selectedBatch ? selectedBatch.servings_remaining : 20}</span></div>
-                  </div>
-                </>
+                    {selectedBatch && <>
+                      <div className="batch-info-row">
+                        <Badge label={`${selectedBatch.servings_remaining} raciones disponibles`}
+                          variant={selectedBatch.servings_remaining <= 2 ? 'yellow' : 'green'} />
+                      </div>
+                      <div className="form-group">
+                        <label>Receta a preparar</label>
+                        <select className="select" value={recipeId} onChange={e => pickRecipe(e.target.value)}>
+                          <option value="">Seleccionar receta...</option>
+                          {store.recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="scaling-box">
+                        <div className="scaling-label">
+                          <span>Raciones a usar del lote</span>
+                          <strong className="scaling-value">{servings}</strong>
+                        </div>
+                        <input type="range" min={1} max={selectedBatch.servings_remaining}
+                          value={servings} onChange={e => setServings(parseInt(e.target.value))} className="slider" />
+                        <div className="scaling-hints"><span>1</span><span>{selectedBatch.servings_remaining}</span></div>
+                      </div>
+                    </>}
+                  </>
+                )
               )}
             </div>
           )}
