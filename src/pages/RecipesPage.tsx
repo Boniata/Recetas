@@ -44,7 +44,9 @@ function RecipeForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [baseServings, setBaseServings] = useState(initial?.base_servings ?? 4);
   const [isFreezable, setIsFreezable] = useState(initial?.is_freezable ?? true);
+  const [usesFreezer, setUsesFreezer] = useState(initial?.uses_freezer ?? false);
   const [reheatInstructions, setReheatInstructions] = useState(initial?.reheat_instructions ?? '');
+  const [savedOk, setSavedOk] = useState(false);
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>(
     existingIngredients.length
       ? existingIngredients.map(i => ({ name: i.name, quantity: String(i.quantity), unit: i.unit }))
@@ -96,21 +98,23 @@ function RecipeForm({
 
     const reheat = isFreezable && reheatInstructions.trim() ? reheatInstructions.trim() : undefined;
     if (initial) {
-      store.updateRecipe(initial.id, { name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, reheat_instructions: reheat });
+      store.updateRecipe(initial.id, { name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, uses_freezer: usesFreezer, reheat_instructions: reheat });
       store.setRecipeIngredients(initial.id, parsedIngredients);
       store.setRecipeSteps(initial.id, parsedSteps);
     } else {
-      const recipe = store.addRecipe({ name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, reheat_instructions: reheat });
+      const recipe = store.addRecipe({ name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, uses_freezer: usesFreezer, reheat_instructions: reheat });
       store.setRecipeIngredients(recipe.id, parsedIngredients);
       store.setRecipeSteps(recipe.id, parsedSteps);
     }
-    onDone();
+    setSavedOk(true);
+    setTimeout(() => onDone(), 1200);
   }
 
   return (
     <form className="recipe-form" onSubmit={handleSubmit}>
       <h1 className="page-title">{initial ? 'Editar receta' : 'Nueva receta'}</h1>
 
+      {savedOk && <div className="alert alert-success">✓ Receta guardada</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="form-group">
@@ -144,6 +148,16 @@ function RecipeForm({
             onClick={() => setIsFreezable(v => !v)}
           >
             {isFreezable ? '❄️ Sí' : '✗ No'}
+          </button>
+        </div>
+        <div className="form-group form-group-toggle">
+          <label>Usa stock del congelador</label>
+          <button
+            type="button"
+            className={`toggle ${usesFreezer ? 'on' : 'off'}`}
+            onClick={() => setUsesFreezer(v => !v)}
+          >
+            {usesFreezer ? '🧊 Sí' : '✗ No'}
           </button>
         </div>
       </div>
@@ -223,8 +237,9 @@ function RecipeForm({
               />
               <button
                 type="button"
-                className="btn-icon btn-icon-danger"
+                className="btn-icon btn-icon-danger step-delete"
                 onClick={() => removeStep(idx)}
+                aria-label="Eliminar paso"
               >✕</button>
             </div>
           ))}

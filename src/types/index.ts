@@ -3,6 +3,7 @@ export interface Recipe {
   name: string;
   base_servings: number;
   is_freezable: boolean;
+  uses_freezer?: boolean;
   reheat_instructions?: string;
   created_at: string;
 }
