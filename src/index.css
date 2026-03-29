@@ -393,6 +393,11 @@ textarea.input { resize: vertical; }
 .steps-display-list li { counter-increment: steps; padding: 12px 16px 12px 48px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); position: relative; line-height: 1.5; }
 .steps-display-list li::before { content: counter(steps); position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .quick-cook-bar { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; justify-content: center; }
+.reheat-section { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: var(--radius); padding: 14px 16px; }
+.reheat-section h3 { color: var(--primary); }
+.reheat-text { font-size: 14px; line-height: 1.6; color: var(--text); margin: 0; }
+.preview-reheat { flex-direction: column; align-items: flex-start; gap: 6px; }
+.reheat-textarea { font-size: 14px; width: 100%; box-sizing: border-box; }
 
 /* ── Scaling slider ───────────────────────────────────────────────────────── */
 .scaling-box {

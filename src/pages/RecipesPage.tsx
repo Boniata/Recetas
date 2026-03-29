@@ -44,6 +44,7 @@ function RecipeForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [baseServings, setBaseServings] = useState(initial?.base_servings ?? 4);
   const [isFreezable, setIsFreezable] = useState(initial?.is_freezable ?? true);
+  const [reheatInstructions, setReheatInstructions] = useState(initial?.reheat_instructions ?? '');
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>(
     existingIngredients.length
       ? existingIngredients.map(i => ({ name: i.name, quantity: String(i.quantity), unit: i.unit }))
@@ -93,12 +94,13 @@ function RecipeForm({
 
     const parsedSteps = stepTexts.filter(t => t.trim());
 
+    const reheat = isFreezable && reheatInstructions.trim() ? reheatInstructions.trim() : undefined;
     if (initial) {
-      store.updateRecipe(initial.id, { name: name.trim(), base_servings: baseServings, is_freezable: isFreezable });
+      store.updateRecipe(initial.id, { name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, reheat_instructions: reheat });
       store.setRecipeIngredients(initial.id, parsedIngredients);
       store.setRecipeSteps(initial.id, parsedSteps);
     } else {
-      const recipe = store.addRecipe({ name: name.trim(), base_servings: baseServings, is_freezable: isFreezable });
+      const recipe = store.addRecipe({ name: name.trim(), base_servings: baseServings, is_freezable: isFreezable, reheat_instructions: reheat });
       store.setRecipeIngredients(recipe.id, parsedIngredients);
       store.setRecipeSteps(recipe.id, parsedSteps);
     }
@@ -145,6 +147,20 @@ function RecipeForm({
           </button>
         </div>
       </div>
+
+      {/* Reheat instructions */}
+      {isFreezable && (
+        <div className="form-group">
+          <label>Cómo preparar desde el congelador</label>
+          <textarea
+            className="input"
+            placeholder="Ej: Descongelar en nevera 24h y calentar a fuego medio 10 min."
+            value={reheatInstructions}
+            onChange={e => setReheatInstructions(e.target.value)}
+            rows={3}
+          />
+        </div>
+      )}
 
       {/* Ingredients */}
       <div className="form-section">
@@ -345,6 +361,13 @@ function RecipeDetail({
         </div>
       )}
 
+      {recipe.is_freezable && recipe.reheat_instructions && (
+        <div className="detail-section reheat-section">
+          <h3>❄️ Cómo preparar desde el congelador</h3>
+          <p className="reheat-text">{recipe.reheat_instructions}</p>
+        </div>
+      )}
+
       {recipe.is_freezable && (
         <div className="quick-cook-bar">
           <button className="btn btn-primary btn-cook" onClick={() => { setBatchServings(servings); setShowBatchModal(true); }}>
@@ -401,6 +424,8 @@ function ImportModal({
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<ReturnType<typeof parseRecipeText> | null>(null);
   const [servings, setServings] = useState(4);
+  const [isFreezable, setIsFreezable] = useState(false);
+  const [reheatInstructions, setReheatInstructions] = useState('');
   const [saved, setSaved] = useState(false);
 
   function handleParse() {
@@ -408,25 +433,18 @@ function ImportModal({
     const p = parseRecipeText(text);
     setPreview(p);
     setServings(p.base_servings);
-  }
-
-  function scaledQty(qty: number): number {
-    if (!preview || preview.base_servings === 0 || qty === 0) return qty;
-    return Math.round((qty * (servings / preview.base_servings)) * 10) / 10;
+    setIsFreezable(p.is_freezable);
   }
 
   function handleSave() {
     if (!preview) return;
-    const scaledIngredients = preview.ingredients.map(ing => ({
-      ...ing,
-      quantity: ing.unit === 'al gusto' ? 0 : scaledQty(ing.quantity),
-    }));
     const recipe = store.addRecipe({
       name: preview.name,
       base_servings: servings,
-      is_freezable: preview.is_freezable,
+      is_freezable: isFreezable,
+      ...(isFreezable && reheatInstructions.trim() ? { reheat_instructions: reheatInstructions.trim() } : {}),
     });
-    store.setRecipeIngredients(recipe.id, scaledIngredients);
+    store.setRecipeIngredients(recipe.id, preview.ingredients);
     store.setRecipeSteps(recipe.id, preview.steps);
     setSaved(true);
     setTimeout(() => onImported(recipe), 800);
@@ -464,7 +482,7 @@ function ImportModal({
               <span className="preview-value">{preview.name}</span>
             </div>
 
-            {/* Editable servings with live scaling */}
+            {/* Servings — sets base_servings label, quantities stay as-is */}
             <div className="preview-field preview-servings">
               <span className="preview-label">¿Para cuántas raciones son estas cantidades?</span>
               <div className="servings-control">
@@ -482,21 +500,40 @@ function ImportModal({
               </div>
             </div>
 
+            {/* Freezable toggle */}
             <div className="preview-field">
               <span className="preview-label">Congelable</span>
-              <span className="preview-value">{preview.is_freezable ? '❄️ Sí' : 'No'}</span>
+              <button
+                type="button"
+                className={`toggle ${isFreezable ? 'on' : 'off'}`}
+                onClick={() => setIsFreezable(v => !v)}
+              >
+                {isFreezable ? '❄️ Sí' : '✗ No'}
+              </button>
             </div>
+
+            {/* Reheat instructions (only when freezable) */}
+            {isFreezable && (
+              <div className="preview-field preview-reheat">
+                <span className="preview-label">Cómo preparar desde el congelador</span>
+                <textarea
+                  className="input reheat-textarea"
+                  placeholder="Ej: Descongelar en nevera 24h y calentar a fuego medio 10 min."
+                  value={reheatInstructions}
+                  onChange={e => setReheatInstructions(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
 
             {preview.ingredients.length > 0 && (
               <div className="preview-section">
-                <span className="preview-label">
-                  Ingredientes{servings !== preview.base_servings ? ` (ajustados a ${servings} raciones)` : ` detectados`} ({preview.ingredients.length})
-                </span>
+                <span className="preview-label">Ingredientes detectados ({preview.ingredients.length})</span>
                 <ul className="preview-list">
                   {preview.ingredients.map((ing, i) => (
                     <li key={i}>
                       <span className="ing-qty">
-                        {ing.unit === 'al gusto' ? 'al gusto' : `${scaledQty(ing.quantity)} ${ing.unit}`}
+                        {ing.unit === 'al gusto' ? 'al gusto' : `${ing.quantity} ${ing.unit}`}
                       </span>
                       {ing.name}
                     </li>
