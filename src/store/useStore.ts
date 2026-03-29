@@ -60,15 +60,20 @@ export function useStore() {
   const addRecipe = useCallback((data: Omit<Recipe, 'id' | 'created_at'>): Recipe => {
     const id = uid();
     const recipe: Recipe = { ...data, id, created_at: new Date().toISOString() };
+    setRecipes(prev => [...prev, recipe]); // optimistic
     setDoc(doc(db, 'recipes', id), recipe).catch(console.error);
     return recipe;
   }, []);
 
   const updateRecipe = useCallback((id: string, data: Partial<Omit<Recipe, 'id' | 'created_at'>>) => {
+    setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...data } : r)); // optimistic
     updateDoc(doc(db, 'recipes', id), data as Record<string, unknown>).catch(console.error);
   }, []);
 
   const deleteRecipe = useCallback((id: string) => {
+    setRecipes(prev => prev.filter(r => r.id !== id)); // optimistic
+    setIngredients(prev => prev.filter(i => i.recipe_id !== id));
+    setSteps(prev => prev.filter(s => s.recipe_id !== id));
     const batch = writeBatch(db);
     batch.delete(doc(db, 'recipes', id));
     ingredients.filter(i => i.recipe_id === id).forEach(i => batch.delete(doc(db, 'ingredients', i.id)));
@@ -78,23 +83,23 @@ export function useStore() {
 
   // ── Ingredients ──
   const setRecipeIngredients = useCallback((recipeId: string, items: Omit<Ingredient, 'id' | 'recipe_id'>[]) => {
+    const newItems: Ingredient[] = items.map(item => ({ ...item, id: uid(), recipe_id: recipeId }));
+    setIngredients(prev => [...prev.filter(i => i.recipe_id !== recipeId), ...newItems]); // optimistic
     const batch = writeBatch(db);
     ingredients.filter(i => i.recipe_id === recipeId).forEach(i => batch.delete(doc(db, 'ingredients', i.id)));
-    items.forEach(item => {
-      const id = uid();
-      batch.set(doc(db, 'ingredients', id), { ...item, id, recipe_id: recipeId });
-    });
+    newItems.forEach(item => batch.set(doc(db, 'ingredients', item.id), item));
     batch.commit().catch(console.error);
   }, [ingredients]);
 
   // ── Steps ──
   const setRecipeSteps = useCallback((recipeId: string, descriptions: string[]) => {
+    const newSteps: RecipeStep[] = descriptions.map((description, idx) => ({
+      id: uid(), recipe_id: recipeId, step_order: idx + 1, description,
+    }));
+    setSteps(prev => [...prev.filter(s => s.recipe_id !== recipeId), ...newSteps]); // optimistic
     const batch = writeBatch(db);
     steps.filter(s => s.recipe_id === recipeId).forEach(s => batch.delete(doc(db, 'steps', s.id)));
-    descriptions.forEach((description, idx) => {
-      const id = uid();
-      batch.set(doc(db, 'steps', id), { id, recipe_id: recipeId, step_order: idx + 1, description });
-    });
+    newSteps.forEach(s => batch.set(doc(db, 'steps', s.id), s));
     batch.commit().catch(console.error);
   }, [steps]);
 

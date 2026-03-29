@@ -400,24 +400,36 @@ function ImportModal({
 }) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<ReturnType<typeof parseRecipeText> | null>(null);
+  const [servings, setServings] = useState(4);
   const [saved, setSaved] = useState(false);
 
   function handleParse() {
     if (!text.trim()) return;
-    setPreview(parseRecipeText(text));
+    const p = parseRecipeText(text);
+    setPreview(p);
+    setServings(p.base_servings);
+  }
+
+  function scaledQty(qty: number): number {
+    if (!preview || preview.base_servings === 0 || qty === 0) return qty;
+    return Math.round((qty * (servings / preview.base_servings)) * 10) / 10;
   }
 
   function handleSave() {
     if (!preview) return;
+    const scaledIngredients = preview.ingredients.map(ing => ({
+      ...ing,
+      quantity: ing.unit === 'al gusto' ? 0 : scaledQty(ing.quantity),
+    }));
     const recipe = store.addRecipe({
       name: preview.name,
-      base_servings: preview.base_servings,
+      base_servings: servings,
       is_freezable: preview.is_freezable,
     });
-    store.setRecipeIngredients(recipe.id, preview.ingredients);
-    store.setRecipeSteps(recipe.id, preview.steps.map(s => s));
+    store.setRecipeIngredients(recipe.id, scaledIngredients);
+    store.setRecipeSteps(recipe.id, preview.steps);
     setSaved(true);
-    setTimeout(() => onImported(recipe), 900);
+    setTimeout(() => onImported(recipe), 800);
   }
 
   return (
@@ -451,10 +463,25 @@ function ImportModal({
               <span className="preview-label">Nombre</span>
               <span className="preview-value">{preview.name}</span>
             </div>
-            <div className="preview-field">
-              <span className="preview-label">Raciones</span>
-              <span className="preview-value">{preview.base_servings}</span>
+
+            {/* Editable servings with live scaling */}
+            <div className="preview-field preview-servings">
+              <span className="preview-label">¿Para cuántas raciones son estas cantidades?</span>
+              <div className="servings-control">
+                <button className="btn-stepper" onClick={() => setServings(s => Math.max(1, s - 1))}>−</button>
+                <input
+                  className="input servings-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={servings}
+                  onChange={e => setServings(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+                <button className="btn-stepper" onClick={() => setServings(s => s + 1)}>+</button>
+                <span className="servings-label">raciones</span>
+              </div>
             </div>
+
             <div className="preview-field">
               <span className="preview-label">Congelable</span>
               <span className="preview-value">{preview.is_freezable ? '❄️ Sí' : 'No'}</span>
@@ -462,12 +489,14 @@ function ImportModal({
 
             {preview.ingredients.length > 0 && (
               <div className="preview-section">
-                <span className="preview-label">Ingredientes detectados ({preview.ingredients.length})</span>
+                <span className="preview-label">
+                  Ingredientes{servings !== preview.base_servings ? ` (ajustados a ${servings} raciones)` : ` detectados`} ({preview.ingredients.length})
+                </span>
                 <ul className="preview-list">
                   {preview.ingredients.map((ing, i) => (
                     <li key={i}>
                       <span className="ing-qty">
-                        {ing.unit === 'al gusto' ? 'al gusto' : `${ing.quantity} ${ing.unit}`}
+                        {ing.unit === 'al gusto' ? 'al gusto' : `${scaledQty(ing.quantity)} ${ing.unit}`}
                       </span>
                       {ing.name}
                     </li>
