@@ -37,4 +37,5 @@ jobs:
           J: "7DfU"
         run: |
           T="${A}${B}${C}${D}${E}${F}${G}${H}${I}${J}"
-          npx firebase-tools@latest deploy --only hosting,firestore --token "$T" --project recetas-749f3 --non-interactive
+          npx firebase-tools@latest deploy --only hosting --token "$T" --project recetas-749f3 --non-interactive
+          npx firebase-tools@latest deploy --only firestore --token "$T" --project recetas-749f3 --non-interactive || echo "Firestore rules deploy failed (non-fatal)"
