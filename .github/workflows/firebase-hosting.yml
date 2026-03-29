@@ -23,6 +23,25 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Validate service account secret
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT secret is empty or not set!"
+            exit 1
+          fi
+          echo "Secret length: ${#FIREBASE_SERVICE_ACCOUNT}"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          if python3 -c "import json,sys; json.load(open('/tmp/sa.json'))" 2>&1; then
+            echo "JSON is valid"
+            python3 -c "import json; d=json.load(open('/tmp/sa.json')); print('type:', d.get('type')); print('project_id:', d.get('project_id')); print('client_email:', d.get('client_email','')[:30]+'...')"
+          else
+            echo "ERROR: JSON is invalid!"
+            exit 1
+          fi
+          rm -f /tmp/sa.json
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
