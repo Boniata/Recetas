@@ -21,7 +21,12 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        env:
+          FIREBASE_ENV: ${{ secrets.FIREBASE_ENV }}
+        run: |
+          printf '%s' "$FIREBASE_ENV" > .env.local
+          npm run build
+          rm -f .env.local
 
       - name: Check build output
         run: |
